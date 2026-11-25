@@ -1,0 +1,666 @@
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Endometriozis Farkındalık Modülü</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+  /* Yerlesim: basili hemsirelik anket formu; tek sutun, numarali maddeler, kaynak dipnotlari.
+     Tek tema (aydinlik kagit) bilerek secildi; tum renkler acikca verilir. */
+  :root {
+    color-scheme: light;
+    --paper: #f4f5f2;
+    --sheet: #ffffff;
+    --ink: #1c2130;
+    --muted: #5b6270;
+    --line: #d9dcd6;
+    --accent: #a3123f;          /* menstruel kirmizi; az kullanilir */
+    --accent-soft: #f6e4ea;
+    --ok: #2d6a4f;
+    --ok-soft: #e2efe7;
+    --warn: #8a5a00;
+    --warn-soft: #f5ead2;
+    --plum: #4a3b8c;
+    --plum-soft: #e9e6f4;
+    --f-display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+    --f-body: "Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif;
+    --f-mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: var(--f-body);
+    font-size: 15.5px;
+    background: var(--paper);
+    color: var(--ink);
+    line-height: 1.55;
+  }
+  .app { max-width: 460px; min-height: 100vh; margin: 0 auto; background: var(--sheet); }
+  @media (min-width: 560px) {
+    body { padding-block: 32px; }
+    .app { min-height: auto; border: 1px solid var(--line); }
+  }
+
+  /* Ust bilgi: form basligi gibi */
+  header.top { padding: 18px 20px 14px; border-bottom: 2px solid var(--ink); }
+  .eyebrow {
+    font-family: var(--f-mono); font-size: 11px; letter-spacing: .08em; text-transform: uppercase;
+    color: var(--muted); display: flex; justify-content: space-between; gap: 8px;
+  }
+  .eyebrow .demo { color: var(--accent); }
+  .brand { font-family: var(--f-display); font-weight: 700; font-size: 24px; line-height: 1.15; margin-top: 6px; text-wrap: balance; }
+  .mode-switch { display: flex; gap: 18px; margin-top: 14px; }
+  .mode-switch button {
+    border: 0; background: none; padding: 0 0 4px; font: inherit; font-size: 14px; color: var(--muted);
+    cursor: pointer; border-bottom: 2px solid transparent;
+  }
+  .mode-switch button.on { color: var(--ink); font-weight: 700; border-bottom-color: var(--accent); }
+  .demo-banner { display: none; }
+
+  /* Adim seridi: 8 adim, 28 gunluk dongu seridini andiran ince kutular */
+  .steps { display: grid; grid-template-columns: repeat(8, 1fr); gap: 3px; padding: 14px 20px 0; }
+  .steps span { height: 10px; background: var(--paper); border: 1px solid var(--line); }
+  .steps span.done { background: var(--ink); border-color: var(--ink); }
+  .steps span.now { background: var(--accent); border-color: var(--accent); }
+  .step-label { font-family: var(--f-mono); font-size: 11.5px; color: var(--muted); padding: 6px 20px 0; letter-spacing: .03em; }
+
+  main { padding: 10px 20px 32px; display: flex; flex-direction: column; gap: 14px; }
+  h1 { font-family: var(--f-display); font-weight: 700; font-size: 26px; line-height: 1.15; margin: 8px 0 0; text-wrap: balance; }
+  h2 { font-family: var(--f-display); font-weight: 700; font-size: 17px; margin: 0 0 6px; }
+  p { margin: 0 0 8px; }
+  p:last-child { margin-bottom: 0; }
+  .muted { color: var(--muted); font-size: 14px; }
+
+  /* Bolum: kart yerine ust cizgili form bolumu */
+  .card { border-top: 1px solid var(--line); padding-top: 14px; }
+
+  /* Soru maddeleri */
+  main { counter-reset: q; }
+  .card:has(.q-text) { display: grid; grid-template-columns: 34px 1fr; column-gap: 6px; }
+  .card:has(.q-text) > * { grid-column: 2; }
+  .qnum { grid-column: 1 !important; grid-row: 1 / span 3; font-family: var(--f-mono); font-size: 14px; color: var(--accent); padding-top: 1px; }
+  .tag { font-size: 12px; color: var(--muted); margin-bottom: 2px; }
+  .q-text { font-size: 15.5px; margin-bottom: 10px; }
+  .opts { display: flex; border: 1px solid var(--ink); }
+  .opts button {
+    flex: 1; border: 0; border-left: 1px solid var(--ink); background: var(--sheet); color: var(--ink);
+    padding: 10px 4px; font: inherit; font-size: 14px; cursor: pointer; min-height: 44px;
+  }
+  .opts button:first-child { border-left: 0; }
+  .opts button:hover { background: var(--paper); }
+  .opts button.sel { background: var(--ink); color: var(--sheet); font-weight: 700; }
+  .progress-txt { font-family: var(--f-mono); font-size: 12px; color: var(--muted); }
+
+  /* Egitim kartlari: mit ustu cizili, gercek altinda */
+  .edu-card { padding-top: 16px; }
+  .myth { font-size: 14px; color: var(--muted); margin-bottom: 6px; }
+  .myth.is-myth { text-decoration: line-through; text-decoration-color: var(--accent); text-decoration-thickness: 2px; }
+  .fact { font-size: 15.5px; }
+  .src { font-size: 12px; color: var(--muted); margin-top: 8px; }
+  .src::before { content: "Kaynak — "; font-family: var(--f-mono); font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase; }
+
+  /* Rehber sonuclari */
+  .result { padding: 16px; }
+  .result.green { background: var(--ok-soft); }
+  .result.amber { background: var(--warn-soft); }
+  .result.violet { background: var(--plum-soft); }
+  .result .status { font-family: var(--f-mono); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; margin-bottom: 4px; }
+  .result.green .status { color: var(--ok); }
+  .result.amber .status { color: var(--warn); }
+  .result.violet .status { color: var(--plum); }
+  .nanda { font-size: 13px; color: var(--muted); margin-bottom: 6px; }
+  ul.clean { margin: 6px 0 0; padding-left: 18px; }
+  ul.clean li { margin-bottom: 6px; }
+
+  /* Asistan */
+  .chat { display: flex; flex-direction: column; gap: 12px; min-height: 200px; padding: 14px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+  .bubble { max-width: 88%; font-size: 15px; white-space: pre-line; }
+  .bubble.me { align-self: flex-end; background: var(--ink); color: var(--sheet); padding: 8px 12px; }
+  .bubble.bot { align-self: flex-start; padding-left: 12px; border-left: 2px solid var(--accent); }
+  .disclaimer { font-size: 12px; color: var(--accent); margin-top: 4px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chips button {
+    border: 1px solid var(--ink); background: var(--sheet); color: var(--ink);
+    padding: 7px 10px; font: inherit; font-size: 13.5px; cursor: pointer; text-align: left;
+  }
+  .chips button:hover { background: var(--paper); }
+  .chat-input { display: flex; gap: 6px; }
+  .chat-input input { flex: 1; min-width: 0; }
+  .chat-input button { width: auto; margin: 0; padding: 0 16px; }
+
+  /* Formlar ve dugmeler */
+  label.check { display: flex; gap: 12px; align-items: flex-start; cursor: pointer; }
+  label.check input { margin-top: 3px; width: 20px; height: 20px; accent-color: var(--ink); flex-shrink: 0; }
+  input[type=text], textarea {
+    width: 100%; font: inherit; padding: 11px 12px; border: 1px solid var(--ink); border-radius: 0;
+    background: var(--sheet); color: var(--ink);
+  }
+  .btn {
+    display: block; width: 100%; border: 0; padding: 14px 16px; margin-top: 6px;
+    font: inherit; font-weight: 700; font-size: 16px; cursor: pointer;
+    background: var(--ink); color: var(--sheet);
+  }
+  .btn:hover { background: #2c3347; }
+  .btn:disabled { background: var(--line); color: var(--muted); cursor: not-allowed; }
+  .btn.ghost { background: var(--sheet); color: var(--ink); border: 1px solid var(--ink); }
+  .btn.small { padding: 0 16px; font-size: 14px; }
+  button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+
+  /* Skorlar ve panel */
+  .score-row { display: grid; grid-template-columns: repeat(3, 1fr); border: 1px solid var(--ink); }
+  .score { padding: 12px 8px; border-left: 1px solid var(--ink); }
+  .score:first-child { border-left: 0; }
+  .score b { display: block; font-family: var(--f-mono); font-weight: 500; font-size: 28px; line-height: 1.1; font-variant-numeric: tabular-nums; }
+  .score span { font-size: 12.5px; color: var(--muted); }
+  table { width: 100%; border-collapse: collapse; font-size: 12.5px; font-variant-numeric: tabular-nums; }
+  th, td { padding: 7px 6px; border-bottom: 1px solid var(--line); text-align: left; white-space: nowrap; }
+  th { font-family: var(--f-mono); font-weight: 500; font-size: 10.5px; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+  tr.live td { background: var(--accent-soft); font-weight: 700; }
+  .scroll-x { overflow-x: auto; }
+  .bars { display: flex; align-items: flex-end; gap: 20px; height: 130px; border-bottom: 1px solid var(--ink); }
+  .bar-group { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; }
+  .bar { width: 100%; max-width: 64px; background: var(--ink); }
+  .bar.t0 { background: var(--line); }
+  .bar.t2 { background: var(--accent); }
+  .bar-val { font-family: var(--f-mono); font-size: 13px; margin-bottom: 4px; }
+  .bar-labels { display: flex; gap: 20px; padding-top: 6px; }
+  .bar-labels span { flex: 1; text-align: center; font-size: 12px; color: var(--muted); }
+  .note { font-size: 13px; color: var(--muted); padding-left: 10px; border-left: 2px solid var(--line); }
+  .ans-key { font-size: 14px; margin-top: 4px; }
+  .ans-key.ok { color: var(--ok); }
+  .ans-key.no { color: var(--accent); }
+  textarea.csv { margin-top: 8px; height: 160px; font-family: var(--f-mono); font-size: 11.5px; }
+  .hidden { display: none !important; }
+  @media (prefers-reduced-motion: no-preference) { .btn, .opts button { transition: background .12s; } }
+</style>
+<div class="app">
+  <header class="top">
+    <div class="eyebrow"><span>Hemşirelik araştırması · 2209-A taslağı</span><span class="demo">Demo</span></div>
+    <div class="brand">Endometriozis ve Menstrüel Sağlık Farkındalık Modülü</div>
+    <div class="mode-switch" role="tablist">
+      <button id="modeP" class="on" onclick="setMode('p')">Katılımcı</button>
+      <button id="modeR" onclick="setMode('r')">Araştırmacı</button>
+    </div>
+  </header>
+
+  <div id="participant">
+    <div class="steps" id="steps"></div>
+    <div class="step-label" id="stepLabel"></div>
+    <main id="screen"></main>
+  </div>
+
+  <div id="researcher" class="hidden">
+    <main id="rscreen"></main>
+  </div>
+</div>
+
+<script>
+/* ---------- Icerik ---------- */
+const SOURCES = {
+  WHO: "DSÖ (WHO) Endometriozis Bilgi Notu, 2023",
+  ESHRE: "ESHRE Endometriozis Kılavuzu, 2022",
+  NICE: "NICE NG73 Endometriozis: Tanı ve Yönetim",
+  UNICEF: "UNICEF / DSÖ Menstrüel Sağlık ve Hijyen Rehberi",
+  FDA: "ABD FDA Tampon Kullanım Bilgilendirmesi",
+  COCH: "Cochrane Sistematik Derlemesi: Egzersiz ve Dismenore, 2019"
+};
+
+// Dogru = true, Yanlis = false
+const QUESTIONS = [
+  { t: "Günlük yaşamı ve derse devamı etkileyen şiddetli adet ağrısı normaldir, araştırılmasına gerek yoktur.", a: false, s: "NICE",
+    why: "Günlük yaşamı etkileyen adet ağrısı, değerlendirilmesi önerilen belirtiler arasındadır." },
+  { t: "Endometriozis, rahim iç zarına benzer dokunun rahim dışında bulunmasıdır.", a: true, s: "WHO",
+    why: "DSÖ tanımı budur; bu doku çoğunlukla pelvis içinde yerleşir." },
+  { t: "Endometriozis, üreme çağındaki kadınların yaklaşık %10'unu etkiler.", a: true, s: "WHO",
+    why: "DSÖ dünya genelinde yaklaşık 190 milyon kişinin etkilendiğini bildirir." },
+  { t: "Endometriozis yalnızca 40 yaş üstü kadınlarda görülür.", a: false, s: "WHO",
+    why: "Belirtiler ilk adetle birlikte başlayabilir; gençlerde de görülür." },
+  { t: "Endometriozis tanısı, belirtiler başladıktan sonra yıllarca gecikebilir.", a: true, s: "WHO",
+    why: "Ağrının normal sanılması tanı gecikmesinin başlıca nedenlerindendir." },
+  { t: "Endometriozis tanısı için her durumda ameliyat (laparoskopi) yapılması şarttır.", a: false, s: "ESHRE",
+    why: "ESHRE 2022, belirtiler ve görüntüleme ile tanıya gidilebileceğini; laparoskopinin artık tek altın standart olmadığını belirtir." },
+  { t: "Adet dönemiyle tekrarlayan ağrılı dışkılama veya ağrılı idrar yapma endometriozis belirtisi olabilir.", a: true, s: "NICE",
+    why: "NICE NG73 bu döngüsel bağırsak ve idrar belirtilerini sayar." },
+  { t: "Endometriozis kısırlığa (infertilite) neden olabilir.", a: true, s: "WHO",
+    why: "DSÖ, endometriozisin infertiliteyle ilişkili olabileceğini belirtir." },
+  { t: "Endometriozisin kalıcı ve kesin bir tedavisi bulunmaktadır.", a: false, s: "WHO",
+    why: "Bilinen kesin bir tedavi yoktur; tedavi belirtileri kontrol etmeyi amaçlar." },
+  { t: "Menstrüel ürünlere ekonomik nedenle erişememek okula ve derse devamı olumsuz etkileyebilir.", a: true, s: "UNICEF",
+    why: "Menstrüel yoksulluk devamsızlık ve damgalanma ile ilişkilidir." }
+];
+
+const POVERTY = [
+  { k: "pv1", t: "Son 12 ayda ekonomik nedenle ped/tampon gibi ürünleri almakta zorlandınız mı?" },
+  { k: "pv2", t: "Ürün yetmediği için bir ürünü önerilenden daha uzun süre kullandığınız oldu mu?" },
+  { k: "pv3", t: "Adet ile ilgili bir nedenle (ağrı, ürün yokluğu) derse/staja gidemediğiniz oldu mu?" }
+];
+const PV_OPTS = ["Hiç", "Bazen", "Sık sık"];
+
+const EDU = [
+  { myth: "Mit: \"Adet ağrısı her kadında olur, katlanmak gerekir.\"",
+    fact: "Hafif ağrı yaygındır; ancak ağrı kesiciye yanıt vermeyen, ders veya işe gitmeyi engelleyen ağrı normal kabul edilmemeli ve bir sağlık profesyoneline danışılmalıdır.",
+    s: ["NICE", "ESHRE"] },
+  { myth: "Mit: \"Endometriozis yaşlı kadınların hastalığıdır.\"",
+    fact: "Endometriozis ilk adetle birlikte başlayabilir. Üreme çağındaki yaklaşık her 10 kadından 1'ini etkiler ve tanısı sıklıkla yıllarca gecikir.",
+    s: ["WHO"] },
+  { myth: "Mit: \"Tanı için mutlaka ameliyat olmak gerekir.\"",
+    fact: "Güncel Avrupa kılavuzuna göre belirtilerin öyküsü ve görüntüleme yöntemleriyle tanıya gidilebilir; tedaviye başlamak için ameliyat beklemek gerekmez.",
+    s: ["ESHRE"] },
+  { myth: "Bilgi: Hangi belirtilerde başvurmalıyım?",
+    fact: "Kronik pelvik ağrı; günlük yaşamı etkileyen adet ağrısı; cinsel ilişki sırasında veya sonrasında derin ağrı; adetle tekrarlayan ağrılı dışkılama veya ağrılı/kanlı idrar; bu belirtilerle birlikte gebe kalamama.",
+    s: ["NICE"] },
+  { myth: "Bilgi: Menstrüel yoksulluk nedir?",
+    fact: "Menstrüel ürünlere, temiz suya, hijyenik tuvalete ve doğru bilgiye ekonomik ya da sosyal nedenlerle erişememektir. Kampüsteki destek noktalarını bilmek ve konuşmaktan çekinmemek ilk adımdır.",
+    s: ["UNICEF"] }
+];
+
+// NICE NG73 belirti listesi: puanlama YOK, herhangi biri varsa basvuru onerilir
+const SYMPTOMS = [
+  { k: "s1", t: "Adet ağrım günlük yaşamımı, derse veya staja gitmemi etkiliyor." },
+  { k: "s2", t: "Adet dönemi dışında da süren pelvik (kasık/karın altı) ağrım var (6 aydan uzun)." },
+  { k: "s3", t: "Cinsel ilişki sırasında veya sonrasında derin ağrı yaşıyorum." },
+  { k: "s4", t: "Adet dönemimde tekrarlayan ağrılı dışkılama oluyor." },
+  { k: "s5", t: "Adet dönemimde tekrarlayan ağrılı idrar yapma veya idrarda kan oluyor." }
+];
+
+const GUIDES = {
+  refer: {
+    cls: "amber",
+    title: "Sağlık profesyoneline başvurmanız önerilir",
+    nanda: "İlgili hemşirelik tanıları (NANDA-I): Akut Ağrı · Kronik Ağrı · Sağlığı Geliştirmeye Hazır Olma",
+    items: [
+      "Aile hekiminize veya Kadın Hastalıkları ve Doğum polikliniğine başvurun. İşaretlediğiniz belirtiler, kılavuzda endometriozis açısından değerlendirme önerilen belirtiler arasındadır.",
+      "Başvurudan önce en az 2–3 adet döngüsü boyunca ağrı günlüğü tutun: ağrının günü, şiddeti (0–10), süresi, etkilediği işler.",
+      "Bu ekran tanı koymaz. Amaç, belirtilerinizi ciddiye almanız ve hekime anlatırken hazırlıklı olmanızdır."
+    ],
+    s: ["NICE", "ESHRE"]
+  },
+  self: {
+    cls: "green",
+    title: "Şu an için öz-bakım ve izlem",
+    nanda: "İlgili hemşirelik tanısı (NANDA-I): Sağlığı Geliştirmeye Hazır Olma",
+    items: [
+      "Ağrılı günlerde karın altına sıcak uygulama (sıcak su torbası) ağrıyı azaltmaya yardımcı olabilir.",
+      "Düzenli egzersiz adet ağrısının şiddetini azaltabilir.",
+      "Döngünüzü bir takvim veya uygulamayla izleyin; ağrı şiddetlenir ya da günlük yaşamınızı etkilemeye başlarsa başvurun."
+    ],
+    s: ["COCH", "NICE"]
+  },
+  poverty: {
+    cls: "violet",
+    title: "Menstrüel ürün erişimi için destek",
+    nanda: "İlgili hemşirelik tanısı (NANDA-I): Etkisiz Sağlık Öz-Yönetimi",
+    items: [
+      "Tamponu 4–8 saatte bir değiştirin; 8 saatten uzun kullanmayın.",
+      "Pedleri kanama miktarına göre düzenli aralıklarla değiştirin; uzun süre aynı ürünü kullanmak cilt tahrişi ve enfeksiyon riskini artırabilir.",
+      "Kampüsteki ücretsiz ürün noktaları ve sosyal destek birimleri: [danışman ile netleştirilecek]."
+    ],
+    s: ["FDA", "UNICEF"]
+  }
+};
+
+const CHAT_KB = [
+  { re: /normal|katlan|çok ağrı|şiddetli/i,
+    a: "Hafif adet ağrısı yaygındır. Ancak ağrı kesiciye rağmen geçmeyen, derse veya işe gitmeni engelleyen ağrı normal kabul edilmemeli; bir sağlık profesyoneline danışman önerilir.",
+    s: ["NICE", "ESHRE"] },
+  { re: /belirti|işaret|anlar|nasıl anla/i,
+    a: "Kılavuzda değerlendirme önerilen belirtiler: kronik pelvik ağrı, günlük yaşamı etkileyen adet ağrısı, ilişki sırasında derin ağrı, adetle tekrarlayan ağrılı dışkılama veya idrar yapma ve bunlarla birlikte gebe kalamama.",
+    s: ["NICE"] },
+  { re: /tanı|ameliyat|laparoskopi|ultrason|teşhis/i,
+    a: "Güncel Avrupa kılavuzuna göre tanı için her zaman ameliyat gerekmez. Belirtilerin öyküsü ve ultrason/MR gibi görüntüleme yöntemleriyle değerlendirme yapılabilir.",
+    s: ["ESHRE"] },
+  { re: /yoksul|ped|tampon|ürün|hijyen|para/i,
+    a: "Menstrüel yoksulluk, ürünlere ve hijyen koşullarına erişememektir. Tamponu 4–8 saatte bir değiştirmek, pedi kanamaya göre düzenli değiştirmek önemlidir. Kampüsteki destek noktalarını öğrenmek için öğrenci işleri veya sağlık merkezine başvurabilirsin.",
+    s: ["UNICEF", "FDA"] },
+  { re: /ilaç|tedavi|hap|ağrı kesici|doz/i,
+    a: "İlaç ve tedavi önerisi veremem; bu bir hekim kararıdır. Ağrın günlük yaşamını etkiliyorsa aile hekimine veya kadın doğum polikliniğine başvurmanı öneririm.",
+    s: ["NICE"] },
+  { re: /kısır|gebe|hamile|çocuk/i,
+    a: "Endometriozis infertiliteyle ilişkili olabilir; ancak endometriozisi olan herkes kısır değildir. Bu konudaki değerlendirme hekim tarafından yapılmalıdır.",
+    s: ["WHO"] }
+];
+const CHIPS = ["Adet ağrısının normal olmadığını nasıl anlarım?", "Tanı için ameliyat gerekir mi?", "Menstrüel yoksulluk nedir?"];
+
+/* ---------- Durum ---------- */
+const STEP_NAMES = ["Onam", "Ön test", "Eğitim", "Belirti", "Rehber", "Asistan", "Son test", "Bitti"];
+const S = {
+  step: 0, nick: "", consent: false,
+  t0: {}, t1: {}, pv: {}, sym: {},
+  chatCount: 0, chatLog: [], eduStart: null, eduSec: 0,
+  t1Score: null, t0Score: null, t2Score: null
+};
+
+function el(tag, attrs, ...kids) {
+  const e = document.createElement(tag);
+  Object.entries(attrs || {}).forEach(([k, v]) => {
+    if (k === "class") e.className = v;
+    else if (k.startsWith("on")) e.addEventListener(k.slice(2), v);
+    else if (k === "html") e.innerHTML = v;
+    else e.setAttribute(k, v);
+  });
+  kids.flat().forEach(c => e.append(c instanceof Node ? c : document.createTextNode(c)));
+  return e;
+}
+function srcLine(keys) {
+  return el("div", { class: "src" }, keys.map(k => SOURCES[k]).join(" · "));
+}
+function score(ans) {
+  return QUESTIONS.reduce((n, q, i) => n + (ans[i] === q.a ? 1 : 0), 0);
+}
+function go(step) { S.step = step; render(); window.scrollTo(0, 0); }
+
+/* ---------- Ekranlar ---------- */
+function renderSteps() {
+  const box = document.getElementById("steps");
+  box.innerHTML = "";
+  STEP_NAMES.forEach((_, i) => box.append(el("span", { class: i < S.step ? "done" : i === S.step ? "now" : "" })));
+  document.getElementById("stepLabel").textContent = `Adım ${S.step + 1}/${STEP_NAMES.length} · ${STEP_NAMES[S.step]}`;
+}
+
+function screenConsent() {
+  const nick = el("input", { type: "text", placeholder: "Örn: mavi25", maxlength: "20", value: S.nick });
+  const cb = el("input", { type: "checkbox" });
+  cb.checked = S.consent;
+  const btn = el("button", { class: "btn", onclick: () => go(1) }, "Başla");
+  const sync = () => {
+    S.nick = nick.value.trim(); S.consent = cb.checked;
+    btn.disabled = !(S.consent && S.nick.length >= 3);
+  };
+  nick.addEventListener("input", sync); cb.addEventListener("change", sync); sync();
+  return [
+    el("h1", {}, "Bilgilendirilmiş Gönüllü Onam"),
+    el("div", { class: "note" }, "Bu bir demodur: girdiğiniz hiçbir şey kaydedilmez veya bir yere gönderilmez. İçerik danışman onayı bekleyen taslaktır."),
+    el("div", { class: "card" },
+      el("p", {}, "Bu çalışma, Hemşirelik Bölümü öğrencisi tarafından danışman öğretim üyesi gözetiminde yürütülen bilimsel bir araştırmadır."),
+      el("ul", { class: "clean" },
+        el("li", {}, "Katılım gönüllüdür; istediğiniz an bırakabilirsiniz."),
+        el("li", {}, "Adınız, numaranız veya iletişim bilginiz istenmez. Yalnızca kendi seçtiğiniz bir rumuz kullanılır."),
+        el("li", {}, "Toplam süre yaklaşık 10 dakikadır. 14 gün sonra 2 dakikalık kısa bir tekrar testi vardır."),
+        el("li", {}, "Bu modül tanı koymaz ve tedavi önermez.")
+      ),
+      el("p", { class: "muted" }, "Etik kurul onay no: [onay sonrası eklenecek]")
+    ),
+    el("div", { class: "card" },
+      el("h2", {}, "Rumuzunuz"),
+      el("p", { class: "muted" }, "14 gün sonraki testte aynı rumuzu gireceksiniz; unutmayacağınız bir şey seçin."),
+      nick
+    ),
+    el("div", { class: "card" }, el("label", { class: "check" }, cb, "Bilgilendirmeyi okudum ve araştırmaya gönüllü olarak katılmayı kabul ediyorum.")),
+    btn
+  ];
+}
+
+function quizScreen(store, title, desc, next, extraReady) {
+  const out = [el("h1", {}, title), el("p", { class: "muted" }, desc)];
+  const prog = el("div", { class: "progress-txt" });
+  const btn = el("button", { class: "btn", onclick: next }, "Devam");
+  const update = () => {
+    const n = Object.keys(store).length;
+    prog.textContent = `${n}/${QUESTIONS.length} yanıtlandı`;
+    btn.disabled = n < QUESTIONS.length || (extraReady && !extraReady());
+  };
+  btn.refresh = update;
+  out.push(prog);
+  QUESTIONS.forEach((q, i) => {
+    const opts = el("div", { class: "opts" });
+    [["Doğru", true], ["Yanlış", false], ["Bilmiyorum", null]].forEach(([lab, val]) => {
+      const b = el("button", { class: store[i] === val && i in store ? "sel" : "" }, lab);
+      b.addEventListener("click", () => {
+        store[i] = val;
+        [...opts.children].forEach(c => c.classList.remove("sel"));
+        b.classList.add("sel");
+        update();
+      });
+      opts.append(b);
+    });
+    out.push(el("div", { class: "card" },
+      el("div", { class: "qnum" }, String(i + 1).padStart(2, "0")),
+      el("div", { class: "q-text" }, q.t),
+      opts,
+      el("div", { class: "tag", style: "margin-top:6px" }, SOURCES[q.s])));
+  });
+  out.push(btn);
+  update();
+  return out;
+}
+
+function screenPretest() {
+  const items = quizScreen(S.t0, "Ön Test (T0)",
+    "Doğru cevaplar bu aşamada gösterilmez. Bilmediğiniz soruda \"Bilmiyorum\" seçeneğini işaretleyin.",
+    () => { S.t0Score = score(S.t0); S.eduStart = Date.now(); go(2); },
+    () => Object.keys(S.pv).length === POVERTY.length);
+  const btn = items.pop();
+  const pvCards = POVERTY.map(p => {
+    const opts = el("div", { class: "opts" });
+    PV_OPTS.forEach(o => {
+      const b = el("button", { class: S.pv[p.k] === o ? "sel" : "" }, o);
+      b.addEventListener("click", () => {
+        S.pv[p.k] = o;
+        [...opts.children].forEach(c => c.classList.remove("sel"));
+        b.classList.add("sel");
+        btn.refresh();
+      });
+      opts.append(b);
+    });
+    return el("div", { class: "card" }, el("div", { class: "q-text" }, p.t), opts);
+  });
+  return [...items, el("h2", { style: "margin-top:16px" }, "Menstrüel ürün erişimi"),
+    el("p", { class: "muted" }, "Bu sorular puanlanmaz; yalnızca durum tespiti içindir."), ...pvCards, btn];
+}
+
+function screenEdu() {
+  return [
+    el("h1", {}, "Akran Eğitimi: 5 Kısa Kart"),
+    el("p", { class: "muted" }, "Hemşirelik öğrencileri tarafından, akran diliyle ve kılavuzlara dayanarak hazırlanmıştır."),
+    ...EDU.map(e => el("div", { class: "card edu-card" },
+      e.myth.startsWith("Mit:")
+        ? el("div", { class: "myth is-myth" }, e.myth.replace(/^Mit:\s*/, ""))
+        : el("h2", {}, e.myth.replace(/^Bilgi:\s*/, "")),
+      el("div", { class: "fact" }, e.fact),
+      srcLine(e.s))),
+    el("button", { class: "btn", onclick: () => { S.eduSec = Math.round((Date.now() - S.eduStart) / 1000); go(3); } }, "Okudum, devam")
+  ];
+}
+
+function screenSymptoms() {
+  const cards = SYMPTOMS.map(s => {
+    const cb = el("input", { type: "checkbox" });
+    cb.checked = !!S.sym[s.k];
+    cb.addEventListener("change", () => { S.sym[s.k] = cb.checked; });
+    return el("div", { class: "card" }, el("label", { class: "check" }, cb, s.t));
+  });
+  return [
+    el("h1", {}, "Belirti Kontrol Listesi"),
+    el("p", { class: "muted" }, "Size uyanları işaretleyin. Hiçbiri uymuyorsa boş bırakıp devam edin. Bu bir puanlama değildir ve tanı koymaz."),
+    ...cards,
+    el("div", { class: "note" }, "Liste NICE NG73 kılavuzundaki \"endometriozis açısından değerlendirme önerilen belirtiler\"den alınmıştır. Uydurma bir puan eşiği kullanılmaz: herhangi bir belirti işaretlenirse başvuru önerilir."),
+    el("button", { class: "btn", onclick: () => go(4) }, "Bana uygun rehberi göster")
+  ];
+}
+
+function guideCard(g) {
+  const status = { amber: "Başvuru önerilir", green: "Öz-bakım ve izlem", violet: "Sosyal destek" }[g.cls];
+  return el("div", { class: "result " + g.cls },
+    el("div", { class: "status" }, status),
+    el("h2", {}, g.title),
+    el("div", { class: "nanda" }, g.nanda),
+    el("ul", { class: "clean" }, ...g.items.map(i => el("li", {}, i))),
+    srcLine(g.s));
+}
+function screenGuide() {
+  const anySym = SYMPTOMS.some(s => S.sym[s.k]);
+  const anyPv = Object.values(S.pv).some(v => v !== "Hiç");
+  const out = [el("h1", {}, "Kanıta Dayalı Bakım Rehberiniz"),
+    el("p", { class: "muted" }, "Yalnızca girişimsel olmayan, ilaç içermeyen hemşirelik önerileri.")];
+  out.push(guideCard(anySym ? GUIDES.refer : GUIDES.self));
+  if (anyPv) out.push(guideCard(GUIDES.poverty));
+  out.push(el("button", { class: "btn", onclick: () => go(5) }, "Asistana soru sor"));
+  return out;
+}
+
+function screenChat() {
+  const box = el("div", { class: "chat" });
+  const draw = () => {
+    box.innerHTML = "";
+    if (!S.chatLog.length) box.append(el("div", { class: "bubble bot" },
+      "Merhaba! Endometriozis ve menstrüel sağlık hakkında sorularını yanıtlayabilirim. Yalnızca onaylı kılavuzlardaki bilgileri kullanırım; tanı koymam, ilaç önermem."));
+    S.chatLog.forEach(m => {
+      if (m.me) { box.append(el("div", { class: "bubble me" }, m.text)); return; }
+      box.append(el("div", { class: "bubble bot" }, m.text,
+        m.s ? srcLine(m.s) : "",
+        el("div", { class: "disclaimer" }, "Bilgilendirme amaçlıdır, tıbbi muayenenin yerini tutmaz.")));
+    });
+  };
+  const ask = q => {
+    if (!q.trim()) return;
+    S.chatCount++;
+    S.chatLog.push({ me: true, text: q });
+    const hit = CHAT_KB.find(k => k.re.test(q));
+    S.chatLog.push(hit ? { text: hit.a, s: hit.s }
+      : { text: "Bu soru onaylı bilgi tabanımda yer almıyor. Yanlış bilgi vermemek için cevaplamıyorum; bir sağlık profesyoneline veya danışman hocaya sorabilirsin." });
+    draw();
+  };
+  const input = el("input", { type: "text", placeholder: "Sorunu yaz..." });
+  const send = el("button", { class: "btn small" }, "Gönder");
+  send.addEventListener("click", () => { ask(input.value); input.value = ""; });
+  input.addEventListener("keydown", e => { if (e.key === "Enter") send.click(); });
+  draw();
+  return [
+    el("h1", {}, "Kılavuz Asistanı"),
+    el("div", { class: "note", style: "margin-bottom:10px" }, "Demo: cevaplar hazır metinlerden gelir. Gerçek sürümde kendi eğittiğimiz yapay zeka modeli yalnızca danışmanın onayladığı kaynak metinlerinden cevap üretecek ve her soru araştırma için kaydedilecek."),
+    el("div", { class: "chips" }, ...CHIPS.map(c => el("button", { onclick: () => ask(c) }, c))),
+    box,
+    el("div", { class: "chat-input" }, input, send),
+    el("button", { class: "btn", style: "margin-top:16px", onclick: () => go(6) }, "Son teste geç")
+  ];
+}
+
+function screenPosttest() {
+  const items = quizScreen(S.t1, "Son Test (T1)", "Aynı 10 soru. Eğitimden sonraki bilginizi ölçer.",
+    () => { S.t1Score = score(S.t1); saveLive(); go(7); });
+  return items;
+}
+
+function screenDone() {
+  const key = QUESTIONS.map((q, i) => {
+    const ok = S.t1[i] === q.a;
+    return el("div", { class: "card" },
+      el("div", { class: "q-text" }, `${i + 1}. ${q.t}`),
+      el("div", { class: "ans-key " + (ok ? "ok" : "no") },
+        `Doğru cevap: ${q.a ? "Doğru" : "Yanlış"} · ${q.why}`));
+  });
+  return [
+    el("h1", {}, "Teşekkürler, " + S.nick + "!"),
+    el("div", { class: "score-row" },
+      el("div", { class: "score" }, el("b", {}, String(S.t0Score)), el("span", {}, "Ön test (T0)")),
+      el("div", { class: "score" }, el("b", {}, String(S.t1Score)), el("span", {}, "Son test (T1)")),
+      el("div", { class: "score" }, el("b", {}, (S.t1Score - S.t0Score >= 0 ? "+" : "") + (S.t1Score - S.t0Score)), el("span", {}, "Değişim"))),
+    el("div", { class: "card", style: "margin-top:12px" },
+      el("h2", {}, "14 gün sonra"),
+      el("p", {}, "Aynı rumuzla (" + S.nick + ") 2 dakikalık kalıcılık testine (T2) davet edileceksiniz. Bu arada asistana ve rehbere istediğiniz zaman dönebilirsiniz.")),
+    el("h2", {}, "Cevap anahtarı"),
+    ...key,
+    el("button", { class: "btn ghost", onclick: () => setMode("r") }, "Araştırmacı paneline bak")
+  ];
+}
+
+const SCREENS = [screenConsent, screenPretest, screenEdu, screenSymptoms, screenGuide, screenChat, screenPosttest, screenDone];
+function render() {
+  renderSteps();
+  const scr = document.getElementById("screen");
+  scr.innerHTML = "";
+  SCREENS[S.step]().forEach(n => scr.append(n));
+}
+
+/* ---------- Arastirmaci paneli ---------- */
+// Ornek (sentetik) kayitlar: yalnizca panelin nasil gorunecegini gostermek icin
+const SAMPLE = [
+  { nick: "örnek-01", t0: 4, t1: 8, t2: 7, chat: 3, edu: 140, sym: "Evet", pv: "Bazen" },
+  { nick: "örnek-02", t0: 6, t1: 9, t2: 9, chat: 1, edu: 95, sym: "Hayır", pv: "Hiç" },
+  { nick: "örnek-03", t0: 3, t1: 7, t2: 6, chat: 5, edu: 210, sym: "Evet", pv: "Sık sık" },
+  { nick: "örnek-04", t0: 5, t1: 8, t2: "", chat: 0, edu: 60, sym: "Hayır", pv: "Hiç" },
+  { nick: "örnek-05", t0: 2, t1: 6, t2: 6, chat: 4, edu: 180, sym: "Evet", pv: "Bazen" },
+  { nick: "örnek-06", t0: 5, t1: 7, t2: 7, chat: 2, edu: 120, sym: "Hayır", pv: "Hiç" }
+];
+let LIVE = null;
+function saveLive() {
+  const worst = Object.values(S.pv).includes("Sık sık") ? "Sık sık" : Object.values(S.pv).includes("Bazen") ? "Bazen" : "Hiç";
+  LIVE = { nick: S.nick, t0: S.t0Score, t1: S.t1Score, t2: S.t2Score ?? "", chat: S.chatCount, edu: S.eduSec,
+           sym: SYMPTOMS.some(s => S.sym[s.k]) ? "Evet" : "Hayır", pv: worst, live: true };
+}
+function rows() { return LIVE ? [...SAMPLE, LIVE] : SAMPLE; }
+function mean(arr) {
+  const v = arr.filter(x => x !== "" && x !== null && x !== undefined);
+  return v.length ? (v.reduce((a, b) => a + b, 0) / v.length) : 0;
+}
+
+function renderResearcher() {
+  const R = rows();
+  const m0 = mean(R.map(r => r.t0)), m1 = mean(R.map(r => r.t1)), m2 = mean(R.map(r => r.t2));
+  const bar = (v, cls, lab) => el("div", { class: "bar-group" },
+    el("div", { class: "bar-val" }, v.toFixed(1)),
+    el("div", { class: "bar " + cls, style: `height:${v * 9}px` }));
+  const symYes = R.filter(r => r.sym === "Evet").length;
+  const pvAny = R.filter(r => r.pv !== "Hiç").length;
+  const hi = R.filter(r => r.chat >= 3), lo = R.filter(r => r.chat < 3);
+  const gain = g => mean(g.map(r => r.t1 - r.t0));
+
+  const table = el("table", {},
+    el("thead", {}, el("tr", {}, ...["Rumuz", "T0", "T1", "T2", "Soru", "Eğitim sn", "Belirti", "Ürün erişimi"].map(h => el("th", {}, h)))),
+    el("tbody", {}, ...R.map(r => el("tr", { class: r.live ? "live" : "" },
+      ...[r.nick, r.t0, r.t1, r.t2 === "" ? "—" : r.t2, r.chat, r.edu, r.sym, r.pv].map(v => el("td", {}, String(v)))))));
+
+  const scr = document.getElementById("rscreen");
+  scr.innerHTML = "";
+  [
+    el("h1", {}, "Araştırmacı Paneli"),
+    el("div", { class: "note", style: "margin-bottom:12px" },
+      "\"örnek-\" ile başlayan satırlar panelin görünümünü göstermek için uydurulmuş SENTETİK kayıtlardır, gerçek veri değildir. " +
+      (LIVE ? "Vurgulu satır, bu demoda az önce sizin girdiğiniz kayıttır." : "Katılımcı akışını bitirirseniz kendi kaydınız da burada görünür.")),
+    el("div", { class: "score-row", style: "margin-bottom:12px" },
+      el("div", { class: "score" }, el("b", {}, String(R.length)), el("span", {}, "Katılımcı")),
+      el("div", { class: "score" }, el("b", {}, String(symYes)), el("span", {}, "Başvuru önerilen")),
+      el("div", { class: "score" }, el("b", {}, String(pvAny)), el("span", {}, "Ürün sorunu"))),
+    el("div", { class: "card" },
+      el("h2", {}, "Bilgi puanı ortalaması (0–10)"),
+      el("div", { class: "bars" }, bar(m0, "t0"), bar(m1, "t1"), bar(m2, "t2")),
+      el("div", { class: "bar-labels" }, el("span", {}, "T0 Ön test"), el("span", {}, "T1 Son test"), el("span", {}, "T2 14. gün")),
+      el("p", { class: "muted", style: "margin-top:10px" }, "Analizde: T0–T1–T2 için tekrarlı ölçümler (veya Friedman) testi.")),
+    el("div", { class: "card" },
+      el("h2", {}, "Asistan kullanımı ve kazanım"),
+      el("p", { style: "font-size:14px" }, `Asistana 3+ soru soranlar (n=${hi.length}): ortalama artış ${gain(hi).toFixed(1)} puan`),
+      el("p", { style: "font-size:14px" }, `3'ten az soranlar (n=${lo.length}): ortalama artış ${gain(lo).toFixed(1)} puan`),
+      el("p", { class: "muted" }, "Kontrol grubu olmadan yapay zeka desteğinin katkısını incelemek için kullanım miktarı ile kazanım karşılaştırılır.")),
+    el("div", { class: "card scroll-x" }, el("h2", {}, "Ham veri"), table),
+    el("button", { class: "btn", onclick: exportCsv }, "SPSS / Excel için CSV'yi kopyala"),
+    el("textarea", { class: "csv hidden", id: "csvOut", readonly: "readonly", "aria-label": "CSV verisi" }),
+    el("button", { class: "btn ghost", onclick: () => setMode("p") }, "Katılımcı görünümüne dön")
+  ].forEach(n => scr.append(n));
+}
+
+function exportCsv(event) {
+  const head = ["rumuz", "t0_bilgi", "t1_bilgi", "t2_bilgi", "asistan_soru_sayisi", "egitim_suresi_sn", "belirti_var", "urun_erisim", "kayit_turu"];
+  const lines = rows().map(r => [r.nick, r.t0, r.t1, r.t2, r.chat, r.edu, r.sym, r.pv, r.live ? "demo_canli" : "sentetik_ornek"]
+    .map(v => `"${String(v).replace(/"/g, '""')}"`).join(";"));
+  const csv = [head.join(";"), ...lines].join("\r\n");
+  const box = document.getElementById("csvOut");
+  box.value = csv;
+  box.classList.remove("hidden");
+  const btn = event.currentTarget;
+  // Pano izni yoksa metin secili birakilir, kullanici elle kopyalar
+  navigator.clipboard.writeText(csv)
+    .then(() => { btn.textContent = "Kopyalandı — Excel'e yapıştırabilirsiniz"; })
+    .catch(() => { box.focus(); box.select(); btn.textContent = "Metni seçtim, Ctrl+C ile kopyalayın"; });
+}
+
+function setMode(m) {
+  document.getElementById("participant").classList.toggle("hidden", m !== "p");
+  document.getElementById("researcher").classList.toggle("hidden", m !== "r");
+  document.getElementById("modeP").classList.toggle("on", m === "p");
+  document.getElementById("modeR").classList.toggle("on", m === "r");
+  if (m === "r") renderResearcher();
+  window.scrollTo(0, 0);
+}
+
+render();
+</script>
