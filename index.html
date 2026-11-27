@@ -508,26 +508,49 @@ function screenChat() {
       if (m.me) { box.append(el("div", { class: "bubble me" }, m.text)); return; }
       box.append(el("div", { class: "bubble bot" }, m.text,
         m.s ? srcLine(m.s) : "",
+        m.srcText ? el("div", { class: "src" }, m.srcText) : "",
         el("div", { class: "disclaimer" }, "Bilgilendirme amaçlıdır, tıbbi muayenenin yerini tutmaz.")));
     });
   };
-  const ask = q => {
+  const askDemo = q => {
+    const hit = CHAT_KB.find(k => k.re.test(q));
+    return hit ? { text: hit.a, s: hit.s }
+      : { text: "Bu soru onaylı bilgi tabanımda yer almıyor. Yanlış bilgi vermemek için cevaplamıyorum; bir sağlık profesyoneline veya danışman hocaya sorabilirsin." };
+  };
+  const askServer = async q => {
+    const resp = await fetch("/api/ask", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ question: q, nickname: S.nick })
+    });
+    if (!resp.ok) throw new Error("Sunucu hatası: " + resp.status);
+    const r = await resp.json();
+    return { text: r.text, srcText: r.source };
+  };
+  const ask = async q => {
     if (!q.trim()) return;
     S.chatCount++;
     S.chatLog.push({ me: true, text: q });
-    const hit = CHAT_KB.find(k => k.re.test(q));
-    S.chatLog.push(hit ? { text: hit.a, s: hit.s }
-      : { text: "Bu soru onaylı bilgi tabanımda yer almıyor. Yanlış bilgi vermemek için cevaplamıyorum; bir sağlık profesyoneline veya danışman hocaya sorabilirsin." });
+    draw();
+    try {
+      S.chatLog.push(API_READY ? await askServer(q) : askDemo(q));
+    } catch (err) {
+      // Sessizce demo cevabina dusulmez; hata sohbette gorunur
+      console.error(err);
+      S.chatLog.push({ text: "Asistan sunucusuna ulaşılamadı. Sunucunun açık olduğundan emin olun." });
+    }
     draw();
   };
   const input = el("input", { type: "text", placeholder: "Sorunu yaz..." });
   const send = el("button", { class: "btn small" }, "Gönder");
-  send.addEventListener("click", () => { ask(input.value); input.value = ""; });
+  send.addEventListener("click", () => { const q = input.value; input.value = ""; ask(q); });
   input.addEventListener("keydown", e => { if (e.key === "Enter") send.click(); });
   draw();
   return [
     el("h1", {}, "Kılavuz Asistanı"),
-    el("div", { class: "note", style: "margin-bottom:10px" }, "Demo: cevaplar hazır metinlerden gelir. Gerçek sürümde kendi eğittiğimiz yapay zeka modeli yalnızca danışmanın onayladığı kaynak metinlerinden cevap üretecek ve her soru araştırma için kaydedilecek."),
+    el("div", { class: "note", style: "margin-bottom:10px" }, API_READY
+      ? "Kendi asistanımız bağlı: soru, onaylı soru–cevap dosyasındaki en yakın soruyla yapay zeka (anlamsal arama) ile eşleştirilir. Kapsam dışı, ilaç ve acil sorular ayrıca ayıklanır. Her soru araştırma için kaydedilir."
+      : "Demo: cevaplar hazır metinlerden gelir. Gerçek sürümde kendi yapay zeka asistanımız yalnızca danışmanın onayladığı kaynak metinlerinden cevap verecek ve her soru araştırma için kaydedilecek."),
     el("div", { class: "chips" }, ...CHIPS.map(c => el("button", { onclick: () => ask(c) }, c))),
     box,
     el("div", { class: "chat-input" }, input, send),
@@ -662,5 +685,19 @@ function setMode(m) {
   window.scrollTo(0, 0);
 }
 
+// Sayfa asistan sunucusundan aciliyorsa gercek asistan kullanilir; GitHub Pages'te demo cevaplari
+let API_READY = false;
+async function detectServer() {
+  if (!location.protocol.startsWith("http") || location.hostname.endsWith("github.io")) return;
+  try {
+    const resp = await fetch("/api/health", { cache: "no-store" });
+    API_READY = resp.ok && (await resp.json()).status === "ok";
+  } catch (err) {
+    console.info("Asistan sunucusu yok, demo cevaplari kullanilacak:", err);
+  }
+  if (S.step === 5) render();
+}
+
 render();
+detectServer();
 </script>
